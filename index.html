@@ -153,6 +153,7 @@ dialog.quiz-feedback[open]{display:flex;flex-direction:column}
 .key-tile:nth-child(odd) summary:focus-visible{outline-color:#fff}
 .key-card summary{cursor:pointer;align-content:center;min-height:56px;padding:.55rem 0;font-weight:700}
 .key-card p{line-height:1.5;margin:0 0 .8rem}
+.key-card[open]{min-height:var(--key-open-height,0px)}
 @media(min-width:781px){.keys-page h1{white-space:nowrap}.large .keys-page h1{white-space:normal}}
 @media(max-width:780px){.key-cards{grid-template-columns:1fr 1fr}.key-tile,.key-tile:nth-child(4),.key-tile:nth-child(5){grid-column:auto}}
 @media(max-width:520px){.key-cards{grid-template-columns:1fr}}
@@ -699,8 +700,27 @@ function portrait(index, paired = false) {
   return img;
 }
 
+let keyCardObserver;
+
+function matchOpenCardHeights(cards) {
+  const keys = [...cards.querySelectorAll('.key-card')];
+  function resize() {
+    cards.style.removeProperty('--key-open-height');
+    const open = keys.filter(key => key.open);
+    if (open.length < 2) return;
+    const tallest = Math.max(...open.map(key => key.getBoundingClientRect().height));
+    cards.style.setProperty('--key-open-height', tallest + 'px');
+  }
+  keyCardObserver = new ResizeObserver(resize);
+  for (const key of keys) {
+    key.addEventListener('toggle', resize);
+    for (const child of key.children) keyCardObserver.observe(child);
+  }
+}
+
 function go(index, focus = true) {
   if (index < 0 || index >= slides.length) return;
+  keyCardObserver?.disconnect();
   if (panel.open) {
     opener = null;
     panel.close();
@@ -876,6 +896,7 @@ function go(index, focus = true) {
   card.append(copy);
 
   stage.replaceChildren(card);
+  if (slide.expandable) matchOpenCardHeights(card.querySelector('.key-cards'));
   $('counter').textContent = `${current + 1} / ${slides.length}`;
   $('progress').value = current + 1;
   $('previous').disabled = cover;
